@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { api, ApiError, type UserPublic } from "../api/client";
 import { FREE_SHIPPING_AT } from "../data/products";
 import type { CartLine } from "./CartDrawer";
 import {
@@ -17,6 +18,7 @@ type Pay = "wechat" | "alipay" | "card";
 
 interface Props {
   lines: CartLine[];
+  user?: UserPublic | null;
   onClose: () => void;
   onPlaced: () => void;
 }
@@ -27,36 +29,46 @@ const PAY_OPTIONS: Array<{ key: Pay; label: string; icon: React.ReactNode }> = [
   { key: "card", label: "银行卡", icon: <IconCard className="h-5 w-5" /> },
 ];
 
-export default function CheckoutModal({ lines, onClose, onPlaced }: Props) {
+export default function CheckoutModal({ lines, user, onClose, onPlaced }: Props) {
   // 挂载时快照订单，避免下单清空购物车后成功页金额归零
   const [snapshot] = useState(lines);
   const [step, setStep] = useState<Step>("form");
-  const [name, setName] = useState("");
+  const [name, setName] = useState(user?.name ?? "");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [pay, setPay] = useState<Pay>("wechat");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState("");
   const [orderId, setOrderId] = useState("");
 
   const subtotal = snapshot.reduce((s, l) => s + l.product.price * l.qty, 0);
   const shipping = subtotal >= FREE_SHIPPING_AT ? 0 : 8;
   const total = subtotal + shipping;
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {};
     if (!name.trim()) errs.name = "请填写收货人姓名";
     if (!/^1[3-9]\d{9}$/.test(phone.trim())) errs.phone = "请填写正确的 11 位手机号";
     if (address.trim().length < 6) errs.address = "请填写完整的收货地址";
     setErrors(errs);
+    setFormError("");
     if (Object.keys(errs).length > 0) return;
 
-    setOrderId(`LH-${Date.now().toString(36).toUpperCase().slice(-6)}${Math.floor(Math.random() * 90 + 10)}`);
     setStep("processing");
-    window.setTimeout(() => {
+    try {
+      const order = await api.createOrder({
+        items: snapshot.map((l) => ({ productId: l.product.id, qty: l.qty })),
+        contact: { name: name.trim(), phone: phone.trim(), address: address.trim() },
+        payment: PAY_OPTIONS.find((o) => o.key === pay)?.label ?? "微信支付",
+      });
+      setOrderId(order.orderNo);
       onPlaced();
       setStep("done");
-    }, 1600);
+    } catch (err) {
+      setStep("form");
+      setFormError(err instanceof ApiError ? err.message : "网络异常，请重试");
+    }
   };
 
   return (
@@ -200,11 +212,19 @@ export default function CheckoutModal({ lines, onClose, onPlaced }: Props) {
                 </div>
               </div>
 
+              {formError && (
+                <p className="rounded-lg border border-copper-500/40 bg-copper-500/10 px-3 py-2.5 text-xs font-semibold text-copper-300">
+                  {formError}
+                </p>
+              )}
+
               <button type="submit" className="btn-primary w-full py-3.5">
                 提交订单 · ¥{total}
               </button>
-              <p className="text-center text-[11px] text-crema-500">
-                演示应用，不会产生真实扣款 · 提交即视为同意《购买须知》
+              <p className="text-center text-[11px] leading-relaxed text-crema-500">
+                订单由后端服务创建：库存校验、价格核算与订单号生成均在服务端完成
+                <br />
+                演示应用，不会产生真实扣款
               </p>
             </form>
           </div>
@@ -214,7 +234,7 @@ export default function CheckoutModal({ lines, onClose, onPlaced }: Props) {
           <div className="flex flex-col items-center px-8 py-20 text-center">
             <IconSpinner className="h-10 w-10 animate-spin text-caramel-400" />
             <h3 className="mt-6 font-display text-xl font-bold text-crema-50">正在下单…</h3>
-            <p className="mt-2 text-sm text-crema-500">炉火正在为你登记这一炉豆子</p>
+            <p className="mt-2 text-sm text-crema-500">服务端正在校验库存、核算价格、写入订单</p>
           </div>
         )}
 
@@ -252,9 +272,9 @@ export default function CheckoutModal({ lines, onClose, onPlaced }: Props) {
               </div>
             </div>
             <p className="mt-5 text-xs leading-relaxed text-crema-500">
-              周五清晨开炉烘焙，袋身印烘焙日期。
+              周五清晨开炉烘焙，袋身印烘焙日期；养豆 3–5 天后风味更佳。
               <br />
-              养豆 3–5 天后风味更佳，请耐心等一等炉火。
+              可随时在右上角账号菜单的「我的订单」中查看烘焙进度。
             </p>
             <button onClick={onClose} className="btn-primary mt-7">
               好的，继续逛

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import type { Product } from "../data/products";
+import type { SellableProduct } from "../api/client";
 import { roastLabel } from "../data/products";
 import {
   IconBag,
@@ -17,9 +17,9 @@ import {
 } from "./icons";
 
 interface Props {
-  product: Product;
+  product: SellableProduct;
   onClose: () => void;
-  onAdd: (p: Product, qty: number) => void;
+  onAdd: (p: SellableProduct, qty: number) => void;
 }
 
 function ProfileBar({ label, value, delay }: { label: string; value: number; delay: number }) {
@@ -47,6 +47,8 @@ function ProfileBar({ label, value, delay }: { label: string; value: number; del
 export default function ProductModal({ product, onClose, onAdd }: Props) {
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
+  const soldOut = product.stock <= 0;
+  const maxQty = Math.max(1, Math.min(20, product.stock));
 
   useEffect(() => {
     setQty(1);
@@ -172,11 +174,30 @@ export default function ProductModal({ product, onClose, onAdd }: Props) {
 
             {/* 价格 + 数量 + 加购 */}
             <div className="mt-6 flex flex-wrap items-center gap-4 border-t border-espresso-800 pt-6">
-              <p className="font-display text-3xl font-black text-caramel-300">
-                <span className="mr-1 text-base font-bold">¥</span>
-                {product.price}
-                <span className="ml-2 text-xs font-normal text-crema-500">/ {product.weight}</span>
-              </p>
+              <div>
+                <p className="font-display text-3xl font-black text-caramel-300">
+                  <span className="mr-1 text-base font-bold">¥</span>
+                  {product.price}
+                  <span className="ml-2 text-xs font-normal text-crema-500">
+                    / {product.weight}
+                  </span>
+                </p>
+                <p
+                  className={`mt-1 text-[11px] font-semibold ${
+                    soldOut
+                      ? "text-copper-400"
+                      : product.stock <= 10
+                        ? "text-copper-300"
+                        : "text-sage-300"
+                  }`}
+                >
+                  {soldOut
+                    ? "暂时售罄 · 下一炉周五开烘"
+                    : product.stock <= 10
+                      ? `库存紧张 · 仅剩 ${product.stock} 袋`
+                      : `现货 ${product.stock} 袋 · 周五现烘现发`}
+                </p>
+              </div>
 
               <div className="ml-auto flex items-center rounded-full border border-espresso-600">
                 <button
@@ -191,8 +212,8 @@ export default function ProductModal({ product, onClose, onAdd }: Props) {
                   {qty}
                 </span>
                 <button
-                  onClick={() => setQty((q) => Math.min(20, q + 1))}
-                  disabled={qty >= 20}
+                  onClick={() => setQty((q) => Math.min(maxQty, q + 1))}
+                  disabled={qty >= maxQty}
                   className="p-2.5 text-crema-300 transition-colors hover:text-caramel-300 disabled:opacity-30"
                   aria-label="增加数量"
                 >
@@ -202,13 +223,16 @@ export default function ProductModal({ product, onClose, onAdd }: Props) {
 
               <button
                 onClick={handleAdd}
-                className={`flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold transition-all duration-300 active:scale-95 ${
+                disabled={soldOut}
+                className={`flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold transition-all duration-300 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 ${
                   added
                     ? "bg-sage-400 text-espresso-950"
                     : "bg-caramel-500 text-espresso-950 hover:bg-caramel-400 hover:shadow-[0_10px_30px_-8px_rgba(214,143,63,0.55)]"
                 }`}
               >
-                {added ? (
+                {soldOut ? (
+                  "已售罄"
+                ) : added ? (
                   <>
                     <IconCheck className="h-4 w-4" /> 已加入购物袋
                   </>

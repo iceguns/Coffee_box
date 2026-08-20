@@ -1,5 +1,34 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { api, getLatency } from "../api/client";
 import { BrandMark, IconArrowRight, IconCheck } from "./icons";
+
+/** 模拟后端心跳：每 6 秒 ping 一次，展示实时响应延迟 */
+function ServerStatus() {
+  const [ms, setMs] = useState<number | null>(null);
+  useEffect(() => {
+    let alive = true;
+    const tick = () => {
+      api
+        .ping()
+        .then(() => {
+          if (alive) setMs(getLatency());
+        })
+        .catch(() => undefined);
+    };
+    tick();
+    const t = window.setInterval(tick, 6000);
+    return () => {
+      alive = false;
+      window.clearInterval(t);
+    };
+  }, []);
+  return (
+    <p className="flex items-center gap-2 rounded-full border border-espresso-800 bg-espresso-900/70 px-3 py-1.5">
+      <span className="anim-pulse-dot h-1.5 w-1.5 rounded-full bg-sage-400" />
+      本地模拟后端 · 响应 {ms === null ? "—" : `${ms} ms`}
+    </p>
+  );
+}
 
 export default function Footer() {
   const [email, setEmail] = useState("");
@@ -90,10 +119,13 @@ export default function Footer() {
 
         <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-espresso-850 pt-6 text-[11px] text-crema-500 sm:flex-row">
           <p>© 2026 炉火烘焙所 HEARTH ROASTERS · 演示应用，商品与订单均为模拟数据</p>
-          <p className="flex items-center gap-1.5">
-            用一炉火，换你清晨的
-            <span className="text-caramel-400">第一口</span>
-          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <ServerStatus />
+            <p className="flex items-center gap-1.5">
+              用一炉火，换你清晨的
+              <span className="text-caramel-400">第一口</span>
+            </p>
+          </div>
         </div>
       </div>
     </footer>

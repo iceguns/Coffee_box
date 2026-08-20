@@ -1,10 +1,10 @@
 import { motion } from "framer-motion";
-import type { Product } from "../data/products";
+import type { SellableProduct } from "../api/client";
 import { FREE_SHIPPING_AT } from "../data/products";
 import { IconArrowRight, IconBag, IconMinus, IconPlus, IconTrash, IconTruck, IconX } from "./icons";
 
 export interface CartLine {
-  product: Product;
+  product: SellableProduct;
   qty: number;
 }
 

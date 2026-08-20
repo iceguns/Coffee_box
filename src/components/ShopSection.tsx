@@ -1,5 +1,6 @@
-import type { Category, Product } from "../data/products";
+import type { Category } from "../data/products";
 import { CATEGORIES, PRODUCTS } from "../data/products";
+import type { SellableProduct } from "../api/client";
 import ProductCard from "./ProductCard";
 import Reveal from "./Reveal";
 import { IconBean, IconSearch, IconX } from "./icons";
@@ -13,9 +14,10 @@ interface Props {
   onCategory: (c: Category | "全部") => void;
   sort: SortKey;
   onSort: (s: SortKey) => void;
-  list: Product[];
-  onDetail: (p: Product) => void;
-  onAdd: (p: Product) => void;
+  list: SellableProduct[];
+  loading?: boolean;
+  onDetail: (p: SellableProduct) => void;
+  onAdd: (p: SellableProduct) => void;
 }
 
 const SORTS: Array<{ key: SortKey; label: string }> = [
@@ -33,6 +35,7 @@ export default function ShopSection({
   sort,
   onSort,
   list,
+  loading = false,
   onDetail,
   onAdd,
 }: Props) {
@@ -120,7 +123,24 @@ export default function ShopSection({
       </Reveal>
 
       {/* 商品网格 */}
-      {list.length > 0 ? (
+      {loading ? (
+        <div className="mt-8 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="overflow-hidden rounded-xl border border-espresso-800 bg-espresso-900/60"
+            >
+              <div className="skeleton aspect-[5/4]" />
+              <div className="space-y-3 p-5">
+                <div className="skeleton h-5 w-2/3 rounded" />
+                <div className="skeleton h-3 w-2/5 rounded" />
+                <div className="skeleton h-4 w-1/2 rounded" />
+                <div className="skeleton mt-3 h-11 w-full rounded-full" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : list.length > 0 ? (
         <div className="mt-8 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
           {list.map((p, i) => (
             <Reveal key={p.id} delay={(i % 3) * 90}>

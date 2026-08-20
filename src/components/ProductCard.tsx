@@ -1,12 +1,12 @@
 import { useState } from "react";
-import type { Product } from "../data/products";
+import type { SellableProduct } from "../api/client";
 import { roastLabel } from "../data/products";
 import { IconArrowUpRight, IconBag, IconBeanSolid, IconFlame, IconPlus, IconStar } from "./icons";
 
 interface Props {
-  product: Product;
-  onDetail: (p: Product) => void;
-  onAdd: (p: Product) => void;
+  product: SellableProduct;
+  onDetail: (p: SellableProduct) => void;
+  onAdd: (p: SellableProduct) => void;
 }
 
 function RoastMeter({ level }: { level: number }) {
@@ -24,8 +24,11 @@ function RoastMeter({ level }: { level: number }) {
 
 export default function ProductCard({ product, onDetail, onAdd }: Props) {
   const [added, setAdded] = useState(false);
+  const soldOut = product.stock <= 0;
+  const lowStock = !soldOut && product.stock <= 10;
 
   const handleAdd = () => {
+    if (soldOut) return;
     onAdd(product);
     setAdded(true);
     window.setTimeout(() => setAdded(false), 900);
@@ -43,14 +46,29 @@ export default function ProductCard({ product, onDetail, onAdd }: Props) {
           src={product.image}
           alt={product.name}
           loading="lazy"
-          className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.07]"
+          className={`h-full w-full object-cover transition-all duration-700 ease-out group-hover:scale-[1.07] ${
+            soldOut ? "opacity-60 grayscale" : ""
+          }`}
         />
         <span className="absolute inset-0 bg-gradient-to-t from-espresso-950/70 via-transparent to-transparent opacity-70" />
-        {product.badge && (
-          <span className="absolute left-3 top-3 rounded-full bg-caramel-500 px-3 py-1 text-[11px] font-bold tracking-wider text-espresso-950 shadow-lg">
-            {product.badge}
-          </span>
-        )}
+
+        <span className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
+          {product.badge && !soldOut && (
+            <span className="rounded-full bg-caramel-500 px-3 py-1 text-[11px] font-bold tracking-wider text-espresso-950 shadow-lg">
+              {product.badge}
+            </span>
+          )}
+          {soldOut ? (
+            <span className="rounded-full bg-espresso-850/95 px-3 py-1 text-[11px] font-bold tracking-wider text-copper-300 shadow-lg ring-1 ring-copper-500/40">
+              已售罄
+            </span>
+          ) : lowStock ? (
+            <span className="rounded-full bg-copper-500/90 px-3 py-1 text-[11px] font-bold tracking-wider text-espresso-950 shadow-lg">
+              仅剩 {product.stock} 袋
+            </span>
+          ) : null}
+        </span>
+
         <span className="absolute right-3 top-3 flex items-center gap-1.5 rounded-full bg-espresso-950/75 px-3 py-1 text-[11px] font-semibold text-caramel-300 backdrop-blur-sm">
           <IconFlame className="h-3.5 w-3.5" />
           {roastLabel(product.roast)}
@@ -97,7 +115,16 @@ export default function ProductCard({ product, onDetail, onAdd }: Props) {
               <span className="mr-0.5 text-sm font-bold">¥</span>
               {product.price}
             </p>
-            <p className="mt-1 text-[11px] text-crema-500">{product.weight}</p>
+            <p className="mt-1 text-[11px] text-crema-500">
+              {product.weight}
+              <span
+                className={`ml-1.5 font-semibold ${
+                  soldOut ? "text-copper-400" : lowStock ? "text-copper-300" : "text-sage-300"
+                }`}
+              >
+                {soldOut ? "· 售罄" : `· 现货 ${product.stock}`}
+              </span>
+            </p>
           </div>
           <div className="mt-3 flex items-center gap-2">
             <button
@@ -108,12 +135,13 @@ export default function ProductCard({ product, onDetail, onAdd }: Props) {
             </button>
             <button
               onClick={handleAdd}
-              className={`flex h-9 items-center gap-1.5 rounded-full px-4 text-xs font-bold transition-all duration-300 active:scale-95 ${
+              disabled={soldOut}
+              className={`flex h-9 items-center gap-1.5 rounded-full px-4 text-xs font-bold transition-all duration-300 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 ${
                 added
                   ? "bg-sage-400 text-espresso-950"
                   : "bg-caramel-500 text-espresso-950 hover:bg-caramel-400 hover:shadow-[0_8px_24px_-8px_rgba(214,143,63,0.6)]"
               }`}
-              aria-label={`将 ${product.name} 加入购物袋`}
+              aria-label={soldOut ? `${product.name} 已售罄` : `将 ${product.name} 加入购物袋`}
             >
               {added ? "已加入" : <IconPlus className="h-3.5 w-3.5" />}
               {!added && <IconBag className="h-3.5 w-3.5" />}
